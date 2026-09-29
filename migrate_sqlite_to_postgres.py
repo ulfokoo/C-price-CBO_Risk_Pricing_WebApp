@@ -3,7 +3,7 @@
 Windows PowerShell:
     $env:DATABASE_URL = "postgresql://USER:PASSWORD@HOST/neondb?sslmode=require"
     python migrate_sqlite_to_postgres.py
-Anything already in the destination tables is REPLACED by your local data.
+The app's tables in the destination are DROPPED and rebuilt, then filled with your local data.
 """
 import os, sys
 from sqlalchemy import create_engine, text, inspect, select
@@ -22,13 +22,14 @@ if dest_url.startswith("postgresql://"):
 src = create_engine("sqlite:///" + SRC)
 dst = create_engine(dest_url)
 meta = db.metadata
-meta.create_all(dst)                       # make sure every table/column exists
-
 tables = list(meta.sorted_tables)          # parents before children
 pos = {t.name: i for i, t in enumerate(tables)}
 
 if input("This REPLACES all data in the destination database. Type YES to continue: ").strip() != "YES":
     sys.exit("Cancelled.")
+
+meta.drop_all(dst)                         # remove old-schema tables (e.g. missing columns)
+meta.create_all(dst)                       # rebuild them with the current structure
 
 src_tables = set(inspect(src).get_table_names())
 with dst.begin() as d, src.connect() as s:
