@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}{{ product.name }} — Partner-Funding Scheme{% endblock %}
+{% block content %}
+{% set active = 'partner' %}
+{% include "dashboards/_subnav.html" %}
+
+<div class="card mb-3">
+  <div class="card-header cbo d-flex justify-content-between align-items-center">
+    <span>Partner-Funding Scheme</span>
+    {% if current_user.is_admin %}
+    <a class="btn btn-sm btn-outline-light" href="{{ url_for('admin.partner_funding_admin', product_id=product.id) }}">Manage in Admin</a>
+    {% endif %}
+  </div>
+  <div class="card-body">
+    <p class="text-muted">Unlike NGO Support (a flat, capped cut to the final rate), each scheme here discounts whichever
+    waterfall input(s) it affects — Cost of Fund, LGD, Operational Cost, or EAD/equity contribution — before the rest of
+    the pricing waterfall runs. Combined discounts on any one input are capped at 100%.</p>
+    <form method="POST" action="{{ url_for('dashboards.save_partner_funding_selections', product_id=product.id) }}">
+      <table class="table table-sm align-middle">
+        <thead><tr><th>Scheme</th><th>Affects</th><th>Justification</th><th>Selected Range</th><th>Active</th></tr></thead>
+        <tbody>
+        {% for opt in result.rows %}
+          <tr>
+            <td class="fw-bold">{{ opt.name }}</td>
+            <td class="small">
+              {% if opt.affects_cost_of_fund %}<span class="badge bg-info text-dark">CoF</span>{% endif %}
+              {% if opt.affects_lgd %}<span class="badge bg-warning text-dark">LGD</span>{% endif %}
+              {% if opt.affects_op_cost %}<span class="badge bg-secondary">Op.Cost</span>{% endif %}
+              {% if opt.affects_ead %}<span class="badge bg-dark">EAD</span>{% endif %}
+            </td>
+            <td class="small text-muted">{{ opt.pricing_impact }} — {{ opt.adjustment_basis }}</td>
+            <td>
+              <select class="form-select form-select-sm" name="tier_{{ opt.id }}" style="min-width:160px">
+                <option value="">— none —</option>
+                {% for tier in opt.tiers|sort(attribute='display_order') %}
+                <option value="{{ tier.id }}" {{ 'selected' if opt.selected_tier_id==tier.id }}>
+                  {{ tier.label }} (−{{ "%.0f%%"|format(tier.reduction_pct*100) }})
+                </option>
+                {% endfor %}
+              </select>
+            </td>
+            <td><input type="checkbox" class="form-check-input" name="active_{{ opt.id }}" {{ 'checked' if opt.is_active }}></td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5" class="text-muted">No partner-funding schemes defined for this product yet.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      <button class="btn btn-primary">Save Selections</button>
+    </form>
+  </div>
+</div>
+
+<p class="fw-bold">
+  Combined effect on pricing: Cost of Fund −{{ "%.1f%%"|format(result.cof_reduction*100) }} ·
+  LGD −{{ "%.1f%%"|format(result.lgd_reduction*100) }} ·
+  Op. Cost −{{ "%.1f%%"|format(result.op_cost_reduction*100) }} ·
+  EAD/Equity −{{ "%.1f%%"|format(result.ead_reduction*100) }}
+</p>
+{% endblock %}

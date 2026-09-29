@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Sign Up — CBO Risk-Based Pricing{% endblock %}
+{% block content %}
+<style>
+  body { background: #0f1729; }
+  .cbo-login-hero {
+    background: linear-gradient(90deg, #0e7a6b, #14b8a6);
+    padding: 32px 40px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 12px;
+    margin: -24px -24px 48px -24px;
+  }
+  .cbo-login-hero h5 { color: #fff; font-weight: 700; margin: 0; font-size: 1.6rem; }
+  .cbo-login-hero small { color: rgba(255,255,255,.85); }
+  .cbo-login-wrap { display: flex; justify-content: center; padding-bottom: 60px; }
+  .cbo-login-card {
+    width: 100%; max-width: 420px;
+    background: #16223f;
+    border-radius: 16px;
+    padding: 40px 36px;
+    box-shadow: 0 20px 50px rgba(0,0,0,.35);
+  }
+  .cbo-avatar {
+    width: 84px; height: 84px; border-radius: 50%;
+    border: 2px solid #22d3c8;
+    box-shadow: 0 0 22px rgba(34,211,200,.55);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 28px auto;
+  }
+  .cbo-avatar i { font-size: 2.1rem; color: #22d3c8; }
+  .cbo-login-card label { color: #cbd5e1; font-size: .9rem; margin-bottom: 6px; display: block; }
+  .cbo-input-group {
+    background: #e9edf7; border-radius: 8px; display: flex; align-items: center;
+    padding: 0 12px; margin-bottom: 20px;
+  }
+  .cbo-input-group i.bi { color: #64748b; margin-right: 8px; }
+  .cbo-input-group input {
+    border: 0; background: transparent; outline: none; width: 100%;
+    padding: 12px 0; color: #0f1729; font-size: .95rem;
+  }
+  .cbo-input-group .toggle-pw {
+    color: #0e7a6b; font-size: .85rem; font-weight: 600; cursor: pointer; user-select: none;
+    background: none; border: none;
+  }
+  .cbo-login-btn {
+    width: 100%; border: none; border-radius: 8px; padding: 13px 0;
+    background: linear-gradient(90deg, #4c5fd5, #7c3aed);
+    color: #fff; font-weight: 600; font-size: 1rem;
+    margin-top: 6px;
+  }
+  .cbo-login-btn:hover { opacity: .92; }
+  .cbo-signup-line { text-align: center; margin-top: 20px; color: #94a3b8; font-size: .9rem; }
+  .cbo-signup-line a { color: #22d3c8; text-decoration: none; }
+  .cbo-signup-line a:hover { text-decoration: underline; }
+  .cbo-flash { margin-bottom: 20px; }
+</style>
+
+<div class="cbo-login-hero">
+  <div>
+    <h5>Cooperative Bank of Oromia</h5>
+    <small>Risk-Based Pricing Platform</small>
+  </div>
+  <div style="color:#fff; font-weight:700; font-size:1.2rem; display:flex; align-items:center; gap:8px">
+    <i class="bi bi-person-plus"></i> Create Account
+  </div>
+</div>
+
+<div class="cbo-login-wrap">
+  <div class="cbo-login-card">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} cbo-flash">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="cbo-avatar"><i class="bi bi-person-plus-fill"></i></div>
+
+    <form method="POST">
+      <label>Username</label>
+      <div class="cbo-input-group">
+        <i class="bi bi-envelope"></i>
+        <input type="text" name="username" required autofocus placeholder="Choose a username">
+      </div>
+
+      <label>Password</label>
+      <div class="cbo-input-group">
+        <i class="bi bi-lock"></i>
+        <input type="password" name="password" id="cbo-pw1" required placeholder="At least 6 characters">
+        <button type="button" class="toggle-pw" onclick="cboTogglePw('cbo-pw1', this)">Show</button>
+      </div>
+
+      <label>Confirm Password</label>
+      <div class="cbo-input-group">
+        <i class="bi bi-lock"></i>
+        <input type="password" name="confirm" id="cbo-pw2" required placeholder="Re-enter password">
+        <button type="button" class="toggle-pw" onclick="cboTogglePw('cbo-pw2', this)">Show</button>
+      </div>
+
+      <button type="submit" class="cbo-login-btn">Create Account</button>
+    </form>
+
+    <div class="cbo-signup-line">
+      Already have an account? <a href="{{ url_for('auth.login') }}">Log in</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  function cboTogglePw(id, btn) {
+    var pw = document.getElementById(id);
+    if (pw.type === 'password') { pw.type = 'text'; btn.textContent = 'Hide'; }
+    else { pw.type = 'password'; btn.textContent = 'Show'; }
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}{{ product.name }} — LGD Calibration{% endblock %}
+{% block content %}
+{% set active = 'lgd' %}
+{% include "dashboards/_subnav.html" %}
+
+{% set pin = product.pricing_input %}
+<div class="card mb-3">
+  <div class="card-header cbo d-flex justify-content-between align-items-center">
+    <span>LGD Calibration</span>
+    {% if current_user.is_admin %}
+    <a class="btn btn-sm btn-outline-light" href="{{ url_for('admin.lgd_calibration_admin', product_id=product.id) }}">Manage in Admin</a>
+    {% endif %}
+  </div>
+  <div class="card-body">
+    <p class="text-muted">Applicable LGD = 1 − Reduction. Pick the coverage tier that applies to this borrower — it overrides the manual LGD % on the Pricing Inputs page, and drives both the main pricing scenario and the Price-Across-Bankable-Grade matrix.</p>
+    <form method="POST" action="{{ url_for('dashboards.select_lgd_tier', product_id=product.id) }}" class="row g-2 align-items-end">
+      <div class="col-md-6">
+        <select class="form-select" name="lgd_tier_id">
+          <option value="">— use manual LGD % ({{ "%.1f%%"|format((pin.loss_given_default if pin else 0)*100) }}) —</option>
+          {% for cat in product.lgd_categories|sort(attribute='display_order') %}
+          <optgroup label="{{ cat.name }}">
+            {% for tier in cat.tiers|sort(attribute='display_order') %}
+            <option value="{{ tier.id }}" {{ 'selected' if pin and pin.lgd_tier_id==tier.id }}>
+              {{ tier.label }} → Applicable LGD {{ "%.1f%%"|format(tier.applicable_lgd()*100) }}
+            </option>
+            {% endfor %}
+          </optgroup>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3"><button class="btn btn-primary">Use this tier</button></div>
+    </form>
+  </div>
+</div>
+
+{% for cat in product.lgd_categories|sort(attribute='display_order') %}
+<div class="card mb-3">
+  <div class="card-header">{{ cat.name }}</div>
+  <table class="table table-sm mb-0">
+    <thead><tr><th>Coverage Range</th><th>LGD Reduction</th><th>Applicable LGD</th><th></th></tr></thead>
+    <tbody>
+    {% for tier in cat.tiers|sort(attribute='display_order') %}
+      <tr class="{{ 'table-success' if pin and pin.lgd_tier_id==tier.id }}">
+        <td>{{ tier.label }}</td>
+        <td>{{ "%.1f%%"|format(tier.reduction_pct*100) }}</td>
+        <td class="fw-bold">{{ "%.1f%%"|format(tier.applicable_lgd()*100) }}</td>
+        <td>{% if pin and pin.lgd_tier_id==tier.id %}<span class="badge bg-success">Selected</span>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-muted">No LGD coverage categories defined for this product yet.</p>
+{% endfor %}
+{% endblock %}

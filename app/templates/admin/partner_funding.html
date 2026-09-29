@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Partner-Funding Scheme — {{ product.name }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3><i class="bi bi-people-fill"></i> Partner-Funding Scheme — {{ product.name }}</h3>
+  <a href="{{ url_for('admin.edit_product', product_id=product.id) }}" class="btn btn-sm btn-outline-secondary">Back</a>
+</div>
+<p class="text-muted">
+  Mirrors the <strong>'Partener-Funding Scheme'</strong>, <strong>'Justification'</strong> and <strong>'Impact-range'</strong> sheets.
+  Unlike NGO Support (a flat, capped cut to the final rate), each scheme here discounts whichever waterfall input(s) it affects —
+  Cost of Fund, LGD, Operational Cost, or EAD/equity contribution — directly, before the rest of the pricing waterfall runs.
+  Combined discounts on any one input are capped at 100%.
+</p>
+
+<p class="fw-bold">
+  Currently active: Cost of Fund −{{ "%.1f%%"|format(result.cof_reduction*100) }} ·
+  LGD −{{ "%.1f%%"|format(result.lgd_reduction*100) }} ·
+  Op. Cost −{{ "%.1f%%"|format(result.op_cost_reduction*100) }} ·
+  EAD/Equity −{{ "%.1f%%"|format(result.ead_reduction*100) }}
+</p>
+
+{% for opt in product.partner_funding_options|sort(attribute='display_order') %}
+<div class="card mb-3">
+  <div class="card-header cbo d-flex justify-content-between align-items-center">
+    <form method="POST" action="{{ url_for('admin.edit_partner_funding_option', option_id=opt.id) }}"
+          class="d-flex gap-2 flex-grow-1 me-2 flex-wrap align-items-center">
+      <input class="form-control form-control-sm" name="name" value="{{ opt.name }}" style="max-width:220px">
+      <input class="form-control form-control-sm" name="pricing_impact" value="{{ opt.pricing_impact }}"
+             placeholder="Pricing impact" style="max-width:220px">
+      <input class="form-control form-control-sm" name="adjustment_basis" value="{{ opt.adjustment_basis }}"
+             placeholder="Adjustment basis / justification" style="max-width:260px">
+      <div class="form-check form-check-inline">
+        <input type="checkbox" class="form-check-input" name="affects_cost_of_fund" {{ 'checked' if opt.affects_cost_of_fund }}>
+        <label class="form-check-label text-white small">CoF</label>
+      </div>
+      <div class="form-check form-check-inline">
+        <input type="checkbox" class="form-check-input" name="affects_lgd" {{ 'checked' if opt.affects_lgd }}>
+        <label class="form-check-label text-white small">LGD</label>
+      </div>
+      <div class="form-check form-check-inline">
+        <input type="checkbox" class="form-check-input" name="affects_op_cost" {{ 'checked' if opt.affects_op_cost }}>
+        <label class="form-check-label text-white small">Op.Cost</label>
+      </div>
+      <div class="form-check form-check-inline">
+        <input type="checkbox" class="form-check-input" name="affects_ead" {{ 'checked' if opt.affects_ead }}>
+        <label class="form-check-label text-white small">EAD</label>
+      </div>
+      <div class="form-check form-check-inline">
+        <input type="checkbox" class="form-check-input" name="is_active" {{ 'checked' if opt.is_active }}>
+        <label class="form-check-label text-white small">Active</label>
+      </div>
+      <button class="btn btn-sm btn-light">Save</button>
+    </form>
+    <form method="POST" action="{{ url_for('admin.delete_partner_funding_option', option_id=opt.id) }}" onsubmit="return confirm('Delete this scheme and all its ranges?');">
+      <button class="btn btn-sm btn-outline-light">Delete</button>
+    </form>
+  </div>
+  <div class="card-body">
+    <strong class="small text-muted">Ranges (coverage tier picked in the Partner-Funding dashboard):</strong>
+    <div class="d-flex flex-wrap gap-2 my-2">
+    {% for tier in opt.tiers|sort(attribute='display_order') %}
+      <form method="POST" action="{{ url_for('admin.edit_partner_funding_tier', tier_id=tier.id) }}" class="d-flex gap-1 align-items-center border rounded p-1 bg-light">
+        <input class="form-control form-control-sm" name="label" value="{{ tier.label }}" style="width:120px">
+        <input class="form-control form-control-sm" type="number" step="0.01" name="reduction_pct"
+               value="{{ "%.2f"|format(tier.reduction_pct*100) }}" style="width:80px" title="Reduction %">
+        <span>%</span>
+        <button class="btn btn-sm btn-outline-primary">✓</button>
+        <button type="submit" formaction="{{ url_for('admin.delete_partner_funding_tier', tier_id=tier.id) }}" formnovalidate class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this range?');">✕</button>
+      </form>
+    {% else %}
+      <span class="text-muted small">No ranges yet.</span>
+    {% endfor %}
+    </div>
+    <form method="POST" action="{{ url_for('admin.add_partner_funding_tier', option_id=opt.id) }}" class="d-flex gap-1">
+      <input class="form-control form-control-sm" name="label" placeholder="e.g. >50%" style="width:160px" required>
+      <input class="form-control form-control-sm" type="number" step="0.01" name="reduction_pct" placeholder="Reduction %" style="width:160px" required>
+      <button class="btn btn-sm btn-success">Add Range</button>
+    </form>
+    <div class="mt-2 small">
+      Currently selected: <strong>{{ opt.selected_tier.label if opt.selected_tier else "None" }}</strong>
+      — pick which tier applies from the <a href="{{ url_for('dashboards.partner_funding', product_id=product.id) }}">Partner-Funding dashboard</a>.
+    </div>
+  </div>
+</div>
+{% else %}
+<p class="text-muted">No partner-funding schemes yet — add one below.</p>
+{% endfor %}
+
+<div class="card mt-3">
+  <div class="card-header cbo">Add Scheme</div>
+  <div class="card-body">
+    <form method="POST" action="{{ url_for('admin.add_partner_funding_option', product_id=product.id) }}" class="row g-2">
+      <div class="col-md-3"><input class="form-control" name="name" placeholder="e.g. Seed Money" required></div>
+      <div class="col-md-3"><input class="form-control" name="pricing_impact" placeholder="Pricing impact"></div>
+      <div class="col-md-3"><input class="form-control" name="adjustment_basis" placeholder="Adjustment basis"></div>
+      <div class="col-md-3 d-flex align-items-center gap-2 flex-wrap">
+        <div class="form-check form-check-inline"><input type="checkbox" class="form-check-input" name="affects_cost_of_fund"><label class="form-check-label small">CoF</label></div>
+        <div class="form-check form-check-inline"><input type="checkbox" class="form-check-input" name="affects_lgd"><label class="form-check-label small">LGD</label></div>
+        <div class="form-check form-check-inline"><input type="checkbox" class="form-check-input" name="affects_op_cost"><label class="form-check-label small">Op.Cost</label></div>
+        <div class="form-check form-check-inline"><input type="checkbox" class="form-check-input" name="affects_ead"><label class="form-check-label small">EAD</label></div>
+      </div>
+      <div class="col-md-12"><button class="btn btn-success">Add Scheme</button></div>
+    </form>
+  </div>
+</div>
+{% endblock %}

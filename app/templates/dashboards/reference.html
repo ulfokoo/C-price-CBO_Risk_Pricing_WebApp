@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}{{ product.name }} — Reference{% endblock %}
+{% block content %}
+{% set active = 'ref' %}
+{% include "dashboards/_subnav.html" %}
+
+<div class="row g-3">
+  <div class="col-md-6">
+    {% set pin = product.pricing_input %}
+    <div class="card mb-3">
+      <div class="card-header cbo">RWA Mapping (per NBE Capital Directive) <span class="fw-normal small">— pick the one that applies</span></div>
+      <table class="table table-sm mb-0">
+        <thead><tr><th>Category</th><th>RWA</th><th></th></tr></thead>
+        <tbody>
+        {% for r in product.rwa_options %}
+          <tr class="{{ 'table-success' if pin and pin.rwa_option_id==r.id }}">
+            <td>{{ r.label }}</td><td>{{ "%.0f%%"|format(r.rwa_value*100) }}</td>
+            <td class="text-end">
+              {% if pin and pin.rwa_option_id==r.id %}<span class="badge bg-success">Selected</span>
+              {% elif pin %}<form method="POST" action="{{ url_for('dashboards.select_reference', product_id=product.id) }}" class="m-0"><input type="hidden" name="rwa_option_id" value="{{ r.id }}"><button class="btn btn-sm btn-outline-primary py-0">Select</button></form>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header cbo">Repayment Schedule / Tenure Charge <span class="fw-normal small">— pick the one that applies</span></div>
+      <table class="table table-sm mb-0">
+        <thead><tr><th>Schedule</th><th>Tenure (months)</th><th>Rate</th><th></th></tr></thead>
+        <tbody>
+        {% for r in product.repayment_schedules %}
+          <tr class="{{ 'table-success' if pin and pin.repayment_schedule_id==r.id }}">
+            <td>{{ r.label }}</td><td>{{ r.tenure_months }}</td><td>{{ "%.3f%%"|format(r.rate*100) }}</td>
+            <td class="text-end">
+              {% if pin and pin.repayment_schedule_id==r.id %}<span class="badge bg-success">Selected</span>
+              {% elif pin %}<form method="POST" action="{{ url_for('dashboards.select_reference', product_id=product.id) }}" class="m-0"><input type="hidden" name="repayment_schedule_id" value="{{ r.id }}"><button class="btn btn-sm btn-outline-primary py-0">Select</button></form>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card mb-3">
+      <div class="card-header cbo">Operational Cost Components</div>
+      <table class="table table-sm mb-0">
+        <thead><tr><th>Component</th><th>Value</th></tr></thead>
+        <tbody>
+        {% for c in product.op_cost_components %}
+          <tr><td>{{ c.name }}</td><td>{{ "%.3f%%"|format(c.value*100) }}</td></tr>
+        {% endfor %}
+        </tbody>
+        <tfoot><tr class="fw-bold table-light"><td>Total Operating Cost</td><td>{{ "%.3f%%"|format(product.op_cost_components|sum(attribute='value')*100) }}</td></tr></tfoot>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

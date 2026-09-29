@@ -1,0 +1,262 @@
+from flask import Blueprint, render_template, redirect, url_for, abort
+from flask_login import login_required
+
+from app.models import Product, LGDCoverageCategory, LGDCoverageTier, PartnerFundingOption, PartnerFundingTier
+from app import calculations as calc
+from app.models import NGOSupportItem
+from app import db
+from app.blueprints.admin import admin_required
+
+dashboards_bp = Blueprint("dashboards", __name__)
+
+
+def get_product_or_404(product_id):
+    return Product.query.get_or_404(product_id)
+
+
+@dashboards_bp.route("/")
+@login_required
+def home():
+    products = Product.query.order_by(Product.name).all()
+    return render_template("dashboards/home.html", products=products)
+
+
+@dashboards_bp.route("/product/<int:product_id>/scorecard")
+@login_required
+def scorecard(product_id):
+    product = get_product_or_404(product_id)
+    result = calc.compute_scorecard(product)
+    return render_template("dashboards/scorecard.html", product=product, result=result)
+
+
+@dashboards_bp.route("/product/<int:product_id>/pricing")
+@login_required
+def pricing(product_id):
+    product = get_product_or_404(product_id)
+    if not product.pricing_input:
+        return render_template("dashboards/pricing_missing.html", product=product)
+    result = calc.compute_pricing(product)
+    if result is None:
+        return render_template("dashboards/pricing_missing.html", product=product)
+    return render_template("dashboards/pricing.html", product=product, result=result)
+
+
+@dashboards_bp.route("/product/<int:product_id>/cost-of-fund")
+@login_required
+def cost_of_fund(product_id):
+    product = get_product_or_404(product_id)
+    result = calc.compute_cost_of_fund(product)
+    return render_template("dashboards/cost_of_fund.html", product=product, result=result)
+
+
+@dashboards_bp.route("/product/<int:product_id>/pd-transformation")
+@login_required
+def pd_transformation(product_id):
+    product = get_product_or_404(product_id)
+    result = calc.compute_pd_transformation(product)
+    return render_template("dashboards/pd_transformation.html", product=product, result=result)
+
+
+@dashboards_bp.route("/product/<int:product_id>/pd-calibration")
+@login_required
+def pd_calibration(product_id):
+    product = get_product_or_404(product_id)
+    result = calc.compute_pd_calibration(product)
+    return render_template("dashboards/pd_calibration.html", product=product, result=result)
+
+
+@dashboards_bp.route("/product/<int:product_id>/lgd-calibration")
+@login_required
+def lgd_calibration(product_id):
+    product = get_product_or_404(product_id)
+    return render_template("dashboards/lgd_calibration.html", product=product)
+
+
+@dashboards_bp.route("/product/<int:product_id>/lgd-calibration/select", methods=["POST"])
+@login_required
+def select_lgd_tier(product_id):
+    from flask import request, redirect, url_for, flash
+    product = get_product_or_404(product_id)
+    pin = product.pricing_input
+    if pin is not None:
+        tier_id = request.form.get("lgd_tier_id", type=int)
+        pin.lgd_tier_id = tier_id if tier_id else None
+        db.session.commit()
+        flash("LGD coverage tier updated for this product's pricing.", "success")
+    return redirect(request.referrer or url_for("dashboards.lgd_calibration", product_id=product_id))
+
+
+@dashboards_bp.route("/product/<int:product_id>/partner-funding")
+@login_required
+def partner_funding(product_id):
+    product = get_product_or_404(product_id)
+    result = calc.compute_partner_funding(product)
+    return render_template("dashboards/partner_funding.html", product=product, result=result)
+
+
+@dashboards_bp.route("/partner-funding/<int:option_id>/select-tier", methods=["POST"])
+@login_required
+def select_partner_funding_tier(option_id):
+    from flask import request, redirect, url_for, flash
+    opt = PartnerFundingOption.query.get_or_404(option_id)
+    tier_id = request.form.get("tier_id", type=int)
+    opt.selected_tier_id = tier_id if tier_id else None
+    db.session.commit()
+    flash(f"{opt.name} range updated.", "success")
+    return redirect(request.referrer or url_for("dashboards.partner_funding", product_id=opt.product_id))
+
+
+@dashboards_bp.route("/product/<int:product_id>/partner-funding/save-all", methods=["POST"])
+@login_required
+def save_partner_funding_selections(product_id):
+    from flask import request, redirect, url_for, flash
+    product = get_product_or_404(product_id)
+    for opt in product.partner_funding_options:
+        tier_id = request.form.get(f"tier_{opt.id}", type=int)
+        opt.selected_tier_id = tier_id if tier_id else None
+        opt.is_active = bool(request.form.get(f"active_{opt.id}"))
+    db.session.commit()
+    flash("Partner-funding selections updated.", "success")
+    return redirect(request.referrer or url_for("dashboards.partner_funding", product_id=product_id))
+
+
+@dashboards_bp.route("/product/<int:product_id>/reference/select", methods=["POST"])
+@login_required
+def select_reference(product_id):
+    from flask import request, redirect, url_for, flash
+    product = get_product_or_404(product_id)
+    pin = product.pricing_input
+    if pin is not None:
+        rwa_id = request.form.get("rwa_option_id", type=int)
+        repay_id = request.form.get("repayment_schedule_id", type=int)
+        if rwa_id and any(r.id == rwa_id for r in product.rwa_options):
+            pin.rwa_option_id = rwa_id
+        if repay_id and any(r.id == repay_id for r in product.repayment_schedules):
+            pin.repayment_schedule_id = repay_id
+        db.session.commit()
+        flash("Selection updated - pricing recalculated.", "success")
+    return redirect(url_for("dashboards.reference", product_id=product_id))
+
+
+@dashboards_bp.route("/product/<int:product_id>/reference")
+@login_required
+def reference(product_id):
+    product = get_product_or_404(product_id)
+    return render_template("dashboards/reference.html", product=product)
+
+
+@dashboards_bp.route("/projection")
+@login_required
+def projection_home():
+    products = Product.query.order_by(Product.name).all()
+    return render_template("dashboards/projection_home.html", products=products)
+
+
+@dashboards_bp.route("/eligibility")
+@login_required
+def eligibility_home():
+    products = Product.query.order_by(Product.name).all()
+    return render_template("dashboards/eligibility_home.html", products=products)
+
+
+@dashboards_bp.route("/product/<int:product_id>/projection")
+@login_required
+def projection(product_id):
+    product = get_product_or_404(product_id)
+    result = calc.compute_projection_summary(product)
+    return render_template("dashboards/projection.html", product=product, result=result)
+
+
+@dashboards_bp.route("/product/<int:product_id>/eligibility")
+@login_required
+def eligibility(product_id):
+    product = get_product_or_404(product_id)
+    return render_template("dashboards/eligibility.html", product=product)
+
+
+@dashboards_bp.route("/product/<int:product_id>/ngo-support")
+@login_required
+def ngo_support(product_id):
+    product = get_product_or_404(product_id)
+    result = calc.compute_ngo_support(product)
+    return render_template("dashboards/ngo_support.html", product=product, result=result)
+
+
+@dashboards_bp.route("/product/<int:product_id>/ngo-support/add", methods=["POST"])
+@login_required
+def add_ngo_support(product_id):
+    from flask import request, redirect, url_for, flash
+    product = get_product_or_404(product_id)
+    name = request.form.get("name", "").strip()
+    percent = request.form.get("percent", type=float)
+    max_price_impact_pct = request.form.get("max_price_impact_pct", type=float)
+    if name and percent is not None:
+        db.session.add(NGOSupportItem(product_id=product.id, name=name, percent=percent / 100.0,
+                                        max_price_impact_pct=(max_price_impact_pct or 0) / 100.0,
+                                        display_order=len(product.ngo_support_items) + 1))
+        db.session.commit()
+        flash(f"NGO support item '{name}' added.", "success")
+    return redirect(request.referrer or url_for("dashboards.ngo_support", product_id=product.id))
+
+
+@dashboards_bp.route("/ngo-support/<int:item_id>/edit", methods=["POST"])
+@login_required
+def edit_ngo_support(item_id):
+    from flask import request, redirect, url_for, flash
+    item = NGOSupportItem.query.get_or_404(item_id)
+    name = request.form.get("name", "").strip()
+    percent = request.form.get("percent", type=float)
+    if name:
+        item.name = name
+    if percent is not None:
+        item.percent = percent / 100.0
+    max_price_impact_pct = request.form.get("max_price_impact_pct", type=float)
+    if max_price_impact_pct is not None:
+        item.max_price_impact_pct = max_price_impact_pct / 100.0
+    item.is_active = bool(request.form.get("is_active"))
+    db.session.commit()
+    flash("NGO support item updated.", "success")
+    return redirect(request.referrer or url_for("dashboards.ngo_support", product_id=item.product_id))
+
+
+@dashboards_bp.route("/ngo-support/<int:item_id>/delete", methods=["POST"])
+@login_required
+def delete_ngo_support(item_id):
+    from flask import request, redirect, url_for, flash
+    item = NGOSupportItem.query.get_or_404(item_id)
+    product_id = item.product_id
+    name = item.name
+    db.session.delete(item)
+    db.session.commit()
+    flash(f"NGO support item '{name}' deleted.", "success")
+    return redirect(request.referrer or url_for("dashboards.ngo_support", product_id=product_id))
+
+
+@dashboards_bp.route("/ngo-support/<int:item_id>/select-tier", methods=["POST"])
+@login_required
+def select_ngo_tier(item_id):
+    from flask import request, redirect, url_for, flash
+    item = NGOSupportItem.query.get_or_404(item_id)
+    tier_id = request.form.get("tier_id", type=int)
+    item.selected_tier_id = tier_id if tier_id else None
+    db.session.commit()
+    flash(f"{item.name} range updated.", "success")
+    return redirect(request.referrer or url_for("dashboards.ngo_support", product_id=item.product_id))
+
+
+@dashboards_bp.route("/product/<int:product_id>/ngo-support/save-all", methods=["POST"])
+@login_required
+def save_ngo_selections(product_id):
+    from flask import request, redirect, url_for, flash
+    product = get_product_or_404(product_id)
+    for item in product.ngo_support_items:
+        if item.tiers:
+            tier_id = request.form.get(f"tier_{item.id}", type=int)
+            item.selected_tier_id = tier_id if tier_id else None
+        else:
+            percent = request.form.get(f"percent_{item.id}", type=float)
+            if percent is not None:
+                item.percent = percent / 100.0
+    db.session.commit()
+    flash("NGO support selections updated.", "success")
+    return redirect(request.referrer or url_for("input.input_dashboard", product_id=product_id))

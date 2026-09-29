@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}{{ product.name }} — Eligibility{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="mb-0">{{ product.name }} <small class="text-muted fs-6">eligibility</small></h3>
+  <a href="{{ url_for('dashboards.eligibility_home') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> All Products</a>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+  <h5 class="mb-0">Eligibility & Product Features</h5>
+  {% if current_user.is_admin %}
+  <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin.eligibility_admin', product_id=product.id) }}">Manage in Admin</a>
+  {% endif %}
+</div>
+
+<div class="card mb-3">
+  <div class="card-header cbo">Eligibility Criteria — who qualifies for {{ product.name }}</div>
+  <table class="table table-sm mb-0">
+    <thead><tr><th>Criterion</th><th>Requirement</th><th>Mandatory</th></tr></thead>
+    <tbody>
+    {% for c in product.eligibility_criteria %}
+      <tr>
+        <td>{{ c.criterion }}</td>
+        <td>{{ c.requirement }}</td>
+        <td>{{ "Yes" if c.is_mandatory else "Optional" }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="3" class="text-muted">No eligibility criteria added yet.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% set uncategorized = product.product_features | selectattr('category_id', 'none') | list %}
+{% if product.feature_categories or uncategorized %}
+<div class="card mb-3">
+  <div class="card-header cbo">Product Features</div>
+  <div class="card-body p-0">
+    {% for cat in product.feature_categories %}
+    <table class="table table-sm mb-0">
+      <thead><tr><th colspan="2" class="table-light">{{ cat.name }}</th></tr></thead>
+      <tbody>
+      {% for f in cat.features %}
+        <tr>
+          <td style="width:35%">{{ f.feature }}</td>
+          <td>
+            {% if f.values %}
+              {% for v in f.values %}
+                <div>{{ v.value }}</div>
+              {% endfor %}
+            {% else %}
+              {{ f.value }}
+            {% endif %}
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="2" class="text-muted">No features in this category yet.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% endfor %}
+
+    {% if uncategorized %}
+    <table class="table table-sm mb-0">
+      <tbody>
+      {% for f in uncategorized %}
+        <tr>
+          <td style="width:35%">{{ f.feature }}</td>
+          <td>{{ f.values | map(attribute='value') | join(', ') if f.values else f.value }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+</div>
+{% else %}
+<div class="card">
+  <div class="card-header cbo">Product Features</div>
+  <div class="card-body text-muted">No product features added yet.</div>
+</div>
+{% endif %}
+{% endblock %}

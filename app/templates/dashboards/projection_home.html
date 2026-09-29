@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Projection{% endblock %}
+{% block content %}
+<h3 class="mb-3"><i class="bi bi-bar-chart-line"></i> Projection</h3>
+<p class="text-muted">Each product below has its own crop / segment volume & profitability projections. Editing one product's projections never changes another.</p>
+
+<div class="row g-3">
+{% for p in products %}
+  <div class="col-md-4">
+    <div class="card product-card shadow-sm h-100">
+      <div class="card-header cbo d-flex justify-content-between align-items-center">
+        <strong>{{ p.name }}</strong>
+        {% if current_user.is_admin %}
+        <a href="{{ url_for('admin.projection_admin', product_id=p.id) }}" class="text-white" title="Manage in Admin"><i class="bi bi-gear"></i></a>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        <p class="text-muted small">{{ p.description or "No description yet." }}</p>
+        <div class="list-group list-group-flush">
+        {% for sc in p.projection_scenarios %}
+          <span class="list-group-item"><i class="bi bi-graph-up me-1"></i> {{ sc.crop_name }} ({{ sc.year_label }})</span>
+        {% else %}
+          <span class="list-group-item text-muted">No projections added yet.</span>
+        {% endfor %}
+        </div>
+      </div>
+      <div class="card-footer bg-white">
+        <a href="{{ url_for('dashboards.projection', product_id=p.id) }}" class="btn btn-success btn-sm w-100">
+          <i class="bi bi-bar-chart-line"></i> Open Projection Dashboard
+        </a>
+      </div>
+    </div>
+  </div>
+{% else %}
+  <p class="text-muted">No products yet.</p>
+{% endfor %}
+
+{% if current_user.is_admin %}
+  <div class="col-md-4">
+    <a href="{{ url_for('admin.new_projection') }}" class="text-decoration-none">
+      <div class="card h-100 border-dashed d-flex align-items-center justify-content-center text-center" style="border:2px dashed #ccc; min-height:220px;">
+        <div>
+          <i class="bi bi-plus-circle fs-1 text-success"></i>
+          <p class="mt-2 mb-0 fw-bold">Add New Projection</p>
+          <p class="text-muted small">e.g. Wheat, Poultry, Dairy...</p>
+        </div>
+      </div>
+    </a>
+  </div>
+{% endif %}
+</div>
+{% endblock %}

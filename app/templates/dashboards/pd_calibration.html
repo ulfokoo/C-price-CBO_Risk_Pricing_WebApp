@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}{{ product.name }} — PD Calibration{% endblock %}
+{% block content %}
+{% set active = 'pdcal' %}
+{% include "dashboards/_subnav.html" %}
+
+<div class="card">
+  <div class="card-header cbo d-flex justify-content-between align-items-center">
+    <span>PD Calibration — Average PD: {{ "%.2f%%"|format(result.average_pd*100) }}
+      {% if product.use_pd_calibration %}<span class="badge bg-success ms-2">In use for pricing</span>
+      {% else %}<span class="badge bg-secondary ms-2">Not in use — pricing uses PD Transformation</span>{% endif %}
+    </span>
+    {% if current_user.is_admin %}
+    <a class="btn btn-sm btn-outline-light" href="{{ url_for('admin.pd_grades_admin', product_id=product.id) }}">Manage in Admin</a>
+    {% endif %}
+  </div>
+  <table class="table table-sm mb-0">
+    <thead><tr><th>Grade</th><th>Internal Grade</th><th>PD Weight</th><th>Calibrated PD</th></tr></thead>
+    <tbody>
+    {% for row in result.rows %}
+      <tr>
+        <td>{{ row.grade.grade_label }}</td>
+        <td>{{ row.grade.internal_grade_name }}</td>
+        <td>{{ "%.1f%%"|format(row.pd_weight*100) }}</td>
+        <td class="fw-bold">{{ "%.3f%%"|format(row.calibrated_pd*100) }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="text-muted mt-2">
+  Calibrated PD = PD Weight &times; Average PD, mirroring the 'PD Calibration' sheet. This is a relative-weight calibration
+  against the sector-average PD, distinct from the Agri+Digital stress multiplier on the
+  <a href="{{ url_for('dashboards.pd_transformation', product_id=product.id) }}">PD Transformation</a> page — the toggle on the
+  product's admin page decides which one actually drives pricing.
+</p>
+{% endblock %}

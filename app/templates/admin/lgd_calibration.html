@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}LGD Calibration — {{ product.name }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3><i class="bi bi-shield-check"></i> LGD Calibration — {{ product.name }}</h3>
+  <a href="{{ url_for('admin.edit_product', product_id=product.id) }}" class="btn btn-sm btn-outline-secondary">Back</a>
+</div>
+<p class="text-muted">
+  Mirrors the <strong>'LGD- Calibration'</strong> sheet. Each category (e.g. Insurance Coverage for unsecured loans,
+  Collateral Coverage for secured loans) maps a coverage range to a % LGD reduction — <strong>Applicable LGD = 1 − Reduction</strong>.
+  Pick which tier applies on the <a href="{{ url_for('admin.pricing_inputs', product_id=product.id) }}">Pricing Inputs</a> page
+  or the LGD Calibration dashboard; it overrides the manual LGD % there.
+</p>
+
+{% for cat in product.lgd_categories|sort(attribute='display_order') %}
+<div class="card mb-3">
+  <div class="card-header cbo d-flex justify-content-between align-items-center">
+    <form method="POST" action="{{ url_for('admin.edit_lgd_category', category_id=cat.id) }}" class="d-flex gap-2 flex-grow-1 me-2">
+      <input class="form-control form-control-sm" name="name" value="{{ cat.name }}" style="max-width:360px">
+      <button class="btn btn-sm btn-light">Save</button>
+    </form>
+    <form method="POST" action="{{ url_for('admin.delete_lgd_category', category_id=cat.id) }}" onsubmit="return confirm('Delete this category and all its tiers?');">
+      <button class="btn btn-sm btn-outline-light">Delete Category</button>
+    </form>
+  </div>
+  <div class="card-body">
+    <table class="table table-sm align-middle">
+      <thead><tr><th>Coverage Range</th><th>LGD Reduction %</th><th>Applicable LGD</th><th></th></tr></thead>
+      <tbody>
+      {% for tier in cat.tiers|sort(attribute='display_order') %}
+        <tr>
+          <form method="POST" action="{{ url_for('admin.edit_lgd_tier', tier_id=tier.id) }}">
+          <td><input class="form-control form-control-sm" name="label" value="{{ tier.label }}" style="width:140px"></td>
+          <td><input class="form-control form-control-sm" type="number" step="0.01" name="reduction_pct"
+                     value="{{ "%.2f"|format(tier.reduction_pct*100) }}" style="width:110px"></td>
+          <td>{{ "%.1f%%"|format(tier.applicable_lgd()*100) }}</td>
+          <td>
+            <button class="btn btn-sm btn-outline-primary">Save</button>
+            <button type="submit" formaction="{{ url_for('admin.delete_lgd_tier', tier_id=tier.id) }}" formnovalidate
+                    class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this range?');">Delete</button>
+          </td>
+          </form>
+        </tr>
+      {% else %}
+        <tr><td colspan="4" class="text-muted small">No ranges yet.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <form method="POST" action="{{ url_for('admin.add_lgd_tier', category_id=cat.id) }}" class="d-flex gap-2">
+      <input class="form-control form-control-sm" name="label" placeholder="e.g. >75%" style="width:160px" required>
+      <input class="form-control form-control-sm" type="number" step="0.01" name="reduction_pct" placeholder="Reduction %" style="width:160px" required>
+      <button class="btn btn-sm btn-success">Add Range</button>
+    </form>
+  </div>
+</div>
+{% else %}
+<p class="text-muted">No LGD coverage categories yet — add one below.</p>
+{% endfor %}
+
+<div class="card mt-3">
+  <div class="card-header cbo">Add Coverage Category</div>
+  <div class="card-body">
+    <form method="POST" action="{{ url_for('admin.add_lgd_category', product_id=product.id) }}" class="row g-2">
+      <div class="col-md-8"><input class="form-control" name="name" placeholder="e.g. Insurance Coverage (Unsecured Loan)" required></div>
+      <div class="col-md-4"><button class="btn btn-success w-100">Add Category</button></div>
+    </form>
+  </div>
+</div>
+{% endblock %}
