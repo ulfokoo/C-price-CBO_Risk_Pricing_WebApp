@@ -20,16 +20,23 @@ if dest_url.startswith("postgresql://"):
     dest_url = "postgresql+psycopg://" + dest_url[len("postgresql://"):]
 
 src = create_engine("sqlite:///" + SRC)
-dst = create_engine(dest_url)
+dest_url = dest_url.replace("-pooler", "")   # use the direct connection, not the pooler
+dst = create_engine(dest_url, connect_args={"connect_timeout": 20})
 meta = db.metadata
 tables = list(meta.sorted_tables)          # parents before children
 pos = {t.name: i for i, t in enumerate(tables)}
 
-if input("This REPLACES all data in the destination database. Type YES to continue: ").strip() != "YES":
+if input("This REPLACES all data in the destination database. Type YES to continue: ").strip().upper() != "YES":
     sys.exit("Cancelled.")
 
-meta.drop_all(dst)                         # remove old-schema tables (e.g. missing columns)
-meta.create_all(dst)                       # rebuild them with the current structure
+print("Dropping old tables...")
+with dst.begin() as c:
+    c.execute(text("SET lock_timeout = '15s'"))   # fail fast instead of hanging forever
+    c.execute(text("DROP SCHEMA public CASCADE"))
+    c.execute(text("CREATE SCHEMA public"))
+print("Creating tables...")
+meta.create_all(dst)
+print("Copying data...")
 
 src_tables = set(inspect(src).get_table_names())
 with dst.begin() as d, src.connect() as s:
