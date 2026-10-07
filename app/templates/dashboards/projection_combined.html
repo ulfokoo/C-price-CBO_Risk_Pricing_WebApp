@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Combined Projection{% endblock %}
+{% block content %}
+{% set t = result.totals %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="mb-0"><i class="bi bi-layers"></i> Combined Projection
+    <small class="text-muted fs-6">{% for pp in result.per_product %}{{ pp.product.name }}{% if not loop.last %} + {% endif %}{% endfor %}</small>
+  </h3>
+  <a href="{{ url_for('dashboards.projection_home') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back</a>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-3"><div class="card text-center"><div class="card-body">
+    <div class="text-muted small">Total Farmers</div><div class="fs-5 fw-bold">{{ "{:,}".format(t.farmers|int) }}</div></div></div></div>
+  <div class="col-md-3"><div class="card text-center"><div class="card-body">
+    <div class="text-muted small">Total Portfolio (ETB)</div><div class="fs-5 fw-bold">{{ "{:,.2f}".format(t.portfolio) }}</div></div></div></div>
+  <div class="col-md-3"><div class="card text-center"><div class="card-body">
+    <div class="text-muted small">Total Net Profit (ETB)</div><div class="fs-5 fw-bold text-success">{{ "{:,.2f}".format(t.net_profit) }}</div></div></div></div>
+  <div class="col-md-3"><div class="card text-center"><div class="card-body">
+    <div class="text-muted small">Blended ROA</div><div class="fs-5 fw-bold">{{ "%.2f%%"|format(t.roa*100) }}</div></div></div></div>
+</div>
+
+{% macro line(label, key, cls='') %}
+<tr class="{{ cls }}">
+  <td>{{ label }}</td>
+  {% for pp in result.per_product %}
+  <td class="text-end">{{ "{:,.2f}".format(pp.sums[key]) }}</td>
+  {% endfor %}
+  <td class="text-end fw-bold">{{ "{:,.2f}".format(t[key]) }}</td>
+</tr>
+{% endmacro %}
+
+<div class="card">
+  <div class="card-header cbo">Total Projection by Product</div>
+  <div class="table-responsive">
+  <table class="table table-sm mb-0">
+    <thead class="table-light">
+      <tr>
+        <th>Item</th>
+        {% for pp in result.per_product %}<th class="text-end">{{ pp.product.name }}</th>{% endfor %}
+        <th class="text-end">TOTAL</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Number of Farmers</td>
+        {% for pp in result.per_product %}<td class="text-end">{{ "{:,}".format(pp.sums.farmers|int) }}</td>{% endfor %}
+        <td class="text-end fw-bold">{{ "{:,}".format(t.farmers|int) }}</td>
+      </tr>
+      {{ line('Portfolio in ETB', 'portfolio') }}
+      {{ line('Interest Income', 'interest_income') }}
+      {{ line('Cost of Fund', 'cost_of_fund') }}
+      {{ line('Cost of LMD', 'cost_of_lmd') }}
+      {{ line('Miscellaneous Cost', 'misc_cost') }}
+      {{ line('Access Fee', 'access_fee') }}
+      {{ line('RMS Service Fee', 'rms_fee') }}
+      {{ line('Disaster Risk Reserve (informational)', 'disaster_risk', 'text-muted') }}
+      {{ line('Profit before Tax', 'profit_before_tax', 'fw-bold table-light') }}
+      {{ line('Income Tax', 'income_tax') }}
+      {{ line('Profit after Tax', 'profit_after_tax', 'fw-bold table-light') }}
+      {{ line('Provision Amount', 'provision_amount') }}
+      {{ line('Provision (by loan status)', 'provision_status_amount') }}
+      {{ line('Net Profit', 'net_profit', 'fw-bold table-success') }}
+      <tr class="fw-bold">
+        <td>ROA</td>
+        {% for pp in result.per_product %}<td class="text-end">{{ "%.2f%%"|format(pp.sums.roa*100) }}</td>{% endfor %}
+        <td class="text-end">{{ "%.2f%%"|format(t.roa*100) }}</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}

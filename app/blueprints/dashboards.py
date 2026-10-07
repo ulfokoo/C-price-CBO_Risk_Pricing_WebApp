@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, abort
+from flask import Blueprint, render_template, redirect, url_for, abort, request, flash
 from flask_login import login_required
 
 from app.models import Product, LGDCoverageCategory, LGDCoverageTier, PartnerFundingOption, PartnerFundingTier
@@ -151,6 +151,16 @@ def projection_home():
     products = Product.query.order_by(Product.name).all()
     return render_template("dashboards/projection_home.html", products=products)
 
+@dashboards_bp.route("/projection/combined")
+@login_required
+def projection_combined():
+    ids = request.args.getlist("ids", type=int)
+    if len(ids) < 2:
+        flash("Please select at least two products to combine.", "warning")
+        return redirect(url_for("dashboards.projection_home"))
+    products = Product.query.filter(Product.id.in_(ids)).order_by(Product.name).all()
+    result = calc.compute_combined_projection(products)
+    return render_template("dashboards/projection_combined.html", result=result)
 
 @dashboards_bp.route("/eligibility")
 @login_required

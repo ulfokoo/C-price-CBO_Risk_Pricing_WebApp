@@ -122,6 +122,31 @@ def compute_cost_of_fund(product):
     }
 
 
+def compute_combined_projection(products):
+    """Combine the projections of two or more products into one total."""
+    per_product = []
+    keys = ["portfolio", "interest_income", "cost_of_fund", "cost_of_lmd",
+            "misc_cost", "access_fee", "rms_fee", "disaster_risk",
+            "profit_before_tax", "income_tax", "profit_after_tax",
+            "provision_amount", "provision_status_amount", "net_profit"]
+    totals = {k: 0.0 for k in keys}
+    total_farmers = 0
+
+    for p in products:
+        s = compute_projection_summary(p)
+        rows = s["rows"]
+        sums = {k: sum(r[k] for r in rows) for k in keys}
+        sums["farmers"] = s["total_farmers"]
+        sums["roa"] = (sums["net_profit"] / sums["portfolio"]) if sums["portfolio"] else 0.0
+        per_product.append({"product": p, "rows": rows, "sums": sums})
+        for k in keys:
+            totals[k] += sums[k]
+        total_farmers += s["total_farmers"]
+
+    totals["farmers"] = total_farmers
+    totals["roa"] = (totals["net_profit"] / totals["portfolio"]) if totals["portfolio"] else 0.0
+    return {"per_product": per_product, "totals": totals}
+
 def compute_pd_transformation(product):
     """Mirrors 'PD Transformation' / 'S&P PD and Rating': multiplier and
     adjusted PD per grade, using the Agri + Digital stress uplift."""

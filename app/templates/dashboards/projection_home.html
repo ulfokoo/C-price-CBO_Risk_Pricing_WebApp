@@ -4,12 +4,22 @@
 <h3 class="mb-3"><i class="bi bi-bar-chart-line"></i> Projection</h3>
 <p class="text-muted">Each product below has its own crop / segment volume & profitability projections. Editing one product's projections never changes another.</p>
 
+<form id="combineForm" method="get" action="{{ url_for('dashboards.projection_combined') }}"
+      class="d-flex align-items-center gap-3 mb-3 p-2 border rounded bg-light">
+  <span class="small text-muted"><i class="bi bi-check2-square"></i> Tick two or more products, then combine them:</span>
+  <button type="submit" id="combineBtn" class="btn btn-sm btn-primary" disabled>
+    <i class="bi bi-layers"></i> Combined Projection
+  </button>
+</form>
 <div class="row g-3">
 {% for p in products %}
   <div class="col-md-4">
     <div class="card product-card shadow-sm h-100">
       <div class="card-header cbo d-flex justify-content-between align-items-center">
-        <strong>{{ p.name }}</strong>
+        <label class="mb-0">
+          <input type="checkbox" class="form-check-input me-2 combine-check" name="ids" value="{{ p.id }}" form="combineForm">
+          <strong>{{ p.name }}</strong>
+        </label>
         {% if current_user.is_admin %}
         <a href="{{ url_for('admin.projection_admin', product_id=p.id) }}" class="text-white" title="Manage in Admin"><i class="bi bi-gear"></i></a>
         {% endif %}
@@ -49,4 +59,13 @@
   </div>
 {% endif %}
 </div>
+<script>
+  const checks = document.querySelectorAll('.combine-check');
+  const btn = document.getElementById('combineBtn');
+  function refresh() {
+    btn.disabled = document.querySelectorAll('.combine-check:checked').length < 2;
+  }
+  checks.forEach(c => c.addEventListener('change', refresh));
+  refresh();
+</script>
 {% endblock %}
